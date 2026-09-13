@@ -14,11 +14,8 @@ from aiogram.types import (
     CallbackQuery,
 )
 
-# =========================
-# تنظیمات
-# =========================
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 PORT = int(os.getenv("PORT", "10000"))
 
 if not BOT_TOKEN:
@@ -26,7 +23,7 @@ if not BOT_TOKEN:
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
+    format="%(asctime)s | %(levelname)s | %(message)s"
 )
 
 bot = Bot(
@@ -39,83 +36,180 @@ bot = Bot(
 dp = Dispatcher()
 
 
-# =========================
-# منوی اصلی
-# =========================
-
-def main_menu() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🎨 طراحی بنر",
-                    callback_data="banner"
-                ),
-                InlineKeyboardButton(
-                    text="🎬 ساخت ویدیو",
-                    callback_data="video"
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="👤 برند و پروفایل",
-                    callback_data="brand"
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🏆 ساخت چالش",
-                    callback_data="challenge"
-                ),
-                InlineKeyboardButton(
-                    text="🚀 ساخت کمپین",
-                    callback_data="campaign"
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="ℹ️ درباره ربات",
-                    callback_data="about"
-                ),
-            ],
+def main_menu(user_id: int):
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text="🎨 طراحی بنر",
+                callback_data="banner"
+            ),
+            InlineKeyboardButton(
+                text="🎬 ساخت ویدیو",
+                callback_data="video"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="👤 برند و پروفایل",
+                callback_data="brand"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="🏆 ساخت چالش",
+                callback_data="challenge"
+            ),
+            InlineKeyboardButton(
+                text="🚀 ساخت کمپین",
+                callback_data="campaign"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="ℹ️ درباره ربات",
+                callback_data="about"
+            )
         ]
+    ]
+
+    if user_id == OWNER_ID:
+        buttons.append([
+            InlineKeyboardButton(
+                text="👑 پنل مالک",
+                callback_data="owner_panel"
+            )
+        ])
+
+    return InlineKeyboardMarkup(
+        inline_keyboard=buttons
     )
 
-
-# =========================
-# /start
-# =========================
 
 @dp.message(CommandStart())
 async def start_handler(message: Message):
 
+    user_id = message.from_user.id
     name = message.from_user.first_name or "دوست من"
 
     text = (
         f"سلام <b>{name}</b> 👋\n\n"
-        "به <b>CACTUC STUDIO</b> خوش آمدی.\n\n"
-        "اینجا می‌تونی برای تلگرام "
-        "بنر، ویدیو، برند و کمپین حرفه‌ای بسازی.\n\n"
-        "👇 یکی از بخش‌ها رو انتخاب کن:"
+        "<b>CACTUC STUDIO</b>\n"
+        "استودیوی فارسی تولید محتوای تلگرام.\n\n"
+        "👇 چه کاری می‌خوای انجام بدی؟"
     )
 
     await message.answer(
         text,
-        reply_markup=main_menu()
+        reply_markup=main_menu(user_id)
     )
 
 
-# =========================
-# دکمه طراحی بنر
-# =========================
+@dp.callback_query(F.data == "owner_panel")
+async def owner_panel(callback: CallbackQuery):
+
+    if callback.from_user.id != OWNER_ID:
+        await callback.answer(
+            "⛔ این بخش فقط برای مالک ربات است.",
+            show_alert=True
+        )
+        return
+
+    text = (
+        "👑 <b>پنل مالک CACTUC STUDIO</b>\n\n"
+        "وضعیت ربات: 🟢 فعال\n"
+        f"شناسه مالک: <code>{OWNER_ID}</code>\n\n"
+        "بخش‌های مدیریتی بعداً از همین‌جا اضافه می‌شوند."
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📊 آمار",
+                    callback_data="owner_stats"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⚙️ تنظیمات",
+                    callback_data="owner_settings"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔙 برگشت",
+                    callback_data="home"
+                )
+            ]
+        ]
+    )
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=keyboard
+    )
+
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "owner_stats")
+async def owner_stats(callback: CallbackQuery):
+
+    if callback.from_user.id != OWNER_ID:
+        await callback.answer(
+            "⛔ دسترسی ندارید.",
+            show_alert=True
+        )
+        return
+
+    await callback.answer()
+
+    await callback.message.edit_text(
+        "📊 <b>آمار ربات</b>\n\n"
+        "این بخش در نسخه بعدی با دیتابیس واقعی فعال می‌شود.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🔙 پنل مالک",
+                        callback_data="owner_panel"
+                    )
+                ]
+            ]
+        )
+    )
+
+
+@dp.callback_query(F.data == "owner_settings")
+async def owner_settings(callback: CallbackQuery):
+
+    if callback.from_user.id != OWNER_ID:
+        await callback.answer(
+            "⛔ دسترسی ندارید.",
+            show_alert=True
+        )
+        return
+
+    await callback.answer()
+
+    await callback.message.edit_text(
+        "⚙️ <b>تنظیمات مالک</b>\n\n"
+        "تنظیمات پیشرفته در مرحله اتصال دیتابیس و سرویس‌های تولید محتوا اضافه می‌شود.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🔙 پنل مالک",
+                        callback_data="owner_panel"
+                    )
+                ]
+            ]
+        )
+    )
+
 
 @dp.callback_query(F.data == "banner")
 async def banner_handler(callback: CallbackQuery):
-
-    text = (
-        "🎨 <b>استودیو طراحی بنر</b>\n\n"
-        "نوع بنری که می‌خوای بسازی رو انتخاب کن:"
-    )
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -127,7 +221,7 @@ async def banner_handler(callback: CallbackQuery):
                 InlineKeyboardButton(
                     text="📢 تبلیغات",
                     callback_data="banner_ad"
-                ),
+                )
             ],
             [
                 InlineKeyboardButton(
@@ -137,7 +231,7 @@ async def banner_handler(callback: CallbackQuery):
                 InlineKeyboardButton(
                     text="📣 معرفی کانال",
                     callback_data="banner_channel"
-                ),
+                )
             ],
             [
                 InlineKeyboardButton(
@@ -147,13 +241,13 @@ async def banner_handler(callback: CallbackQuery):
                 InlineKeyboardButton(
                     text="💎 Premium / Stars",
                     callback_data="banner_premium"
-                ),
+                )
             ],
             [
                 InlineKeyboardButton(
                     text="✏️ طراحی دلخواه",
                     callback_data="banner_custom"
-                ),
+                )
             ],
             [
                 InlineKeyboardButton(
@@ -165,211 +259,140 @@ async def banner_handler(callback: CallbackQuery):
     )
 
     await callback.message.edit_text(
-        text,
+        "🎨 <b>استودیو طراحی بنر</b>\n\n"
+        "نوع بنر را انتخاب کن:",
         reply_markup=keyboard
     )
 
     await callback.answer()
 
-
-# =========================
-# دکمه ویدیو
-# =========================
 
 @dp.callback_query(F.data == "video")
 async def video_handler(callback: CallbackQuery):
 
-    text = (
-        "🎬 <b>استودیو ویدیو</b>\n\n"
-        "به‌زودی می‌تونی عکس، متن و اطلاعاتت رو بدی "
-        "و یک ویدیوی آماده برای تلگرام دریافت کنی.\n\n"
-        "این بخش در مرحله بعد فعال می‌شه."
-    )
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🔙 برگشت",
-                    callback_data="home"
-                )
-            ]
-        ]
-    )
-
     await callback.message.edit_text(
-        text,
-        reply_markup=keyboard
+        "🎬 <b>استودیو ویدیو</b>\n\n"
+        "اینجا عکس، متن و اطلاعات پروژه را می‌گیریم "
+        "و بعد به موتور واقعی تولید ویدیو وصل می‌کنیم.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🔙 برگشت",
+                        callback_data="home"
+                    )
+                ]
+            ]
+        )
     )
 
     await callback.answer()
 
-
-# =========================
-# برند و پروفایل
-# =========================
 
 @dp.callback_query(F.data == "brand")
 async def brand_handler(callback: CallbackQuery):
 
-    text = (
-        "👤 <b>استودیو برند</b>\n\n"
-        "اینجا بعداً می‌تونی نام برند، عکس، "
-        "رنگ و موضوع فعالیتت رو وارد کنی "
-        "تا برایت یک هویت تصویری هماهنگ ساخته بشه."
-    )
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🔙 برگشت",
-                    callback_data="home"
-                )
-            ]
-        ]
-    )
-
     await callback.message.edit_text(
-        text,
-        reply_markup=keyboard
+        "👤 <b>برند و پروفایل</b>\n\n"
+        "نام برند، عکس، رنگ و موضوع فعالیت را می‌گیریم "
+        "و هویت تصویری یکپارچه برای پروژه می‌سازیم.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🔙 برگشت",
+                        callback_data="home"
+                    )
+                ]
+            ]
+        )
     )
 
     await callback.answer()
 
-
-# =========================
-# چالش
-# =========================
 
 @dp.callback_query(F.data == "challenge")
 async def challenge_handler(callback: CallbackQuery):
 
-    text = (
-        "🏆 <b>استودیو چالش</b>\n\n"
-        "اینجا صاحب کانال می‌تونه "
-        "یک مسابقه حرفه‌ای بسازه، "
-        "جایزه تعیین کنه و شرکت‌کننده‌ها رو مدیریت کنه.\n\n"
-        "این بخش در مرحله بعد ساخته می‌شه."
-    )
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🔙 برگشت",
-                    callback_data="home"
-                )
-            ]
-        ]
-    )
-
     await callback.message.edit_text(
-        text,
-        reply_markup=keyboard
+        "🏆 <b>استودیو چالش</b>\n\n"
+        "ساخت مسابقه، ثبت شرکت‌کنندگان، امتیازدهی "
+        "و اعلام برندگان در نسخه کامل فعال می‌شود.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🔙 برگشت",
+                        callback_data="home"
+                    )
+                ]
+            ]
+        )
     )
 
     await callback.answer()
 
-
-# =========================
-# کمپین
-# =========================
 
 @dp.callback_query(F.data == "campaign")
 async def campaign_handler(callback: CallbackQuery):
 
-    text = (
-        "🚀 <b>استودیو کمپین</b>\n\n"
-        "اینجا بعداً می‌تونی یک کمپین کامل "
-        "برای کانال یا کسب‌وکارت بسازی:\n\n"
-        "🖼 بنر\n"
-        "🎬 ویدیو\n"
-        "📱 نسخه استوری\n"
-        "📝 متن تبلیغاتی\n"
-        "🔗 لینک\n\n"
-        "همه در یک پروژه."
-    )
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🔙 برگشت",
-                    callback_data="home"
-                )
-            ]
-        ]
-    )
-
     await callback.message.edit_text(
-        text,
-        reply_markup=keyboard
+        "🚀 <b>استودیو کمپین</b>\n\n"
+        "ساخت یک بسته کامل تبلیغاتی شامل بنر، ویدیو، "
+        "متن و لینک در این بخش انجام می‌شود.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🔙 برگشت",
+                        callback_data="home"
+                    )
+                ]
+            ]
+        )
     )
 
     await callback.answer()
 
-
-# =========================
-# درباره
-# =========================
 
 @dp.callback_query(F.data == "about")
 async def about_handler(callback: CallbackQuery):
 
-    text = (
-        "ℹ️ <b>درباره CACTUC STUDIO</b>\n\n"
-        "یک استودیوی فارسی برای ساخت "
-        "محتوای حرفه‌ای مخصوص تلگرام.\n\n"
+    await callback.message.edit_text(
+        "ℹ️ <b>CACTUC STUDIO</b>\n\n"
+        "یک استودیوی فارسی برای تولید محتوای حرفه‌ای "
+        "مخصوص تلگرام.\n\n"
         "🎨 طراحی\n"
         "🎬 ویدیو\n"
         "👤 برند\n"
         "🏆 چالش\n"
-        "🚀 کمپین"
-    )
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🔙 برگشت",
-                    callback_data="home"
-                )
+        "🚀 کمپین",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🔙 برگشت",
+                        callback_data="home"
+                    )
+                ]
             ]
-        ]
-    )
-
-    await callback.message.edit_text(
-        text,
-        reply_markup=keyboard
+        )
     )
 
     await callback.answer()
 
-
-# =========================
-# برگشت به خانه
-# =========================
 
 @dp.callback_query(F.data == "home")
 async def home_handler(callback: CallbackQuery):
 
-    text = (
-        "🏠 <b>CACTUC STUDIO</b>\n\n"
-        "چه کاری می‌خوای انجام بدی؟"
-    )
-
     await callback.message.edit_text(
-        text,
-        reply_markup=main_menu()
+        "🏠 <b>CACTUC STUDIO</b>\n\n"
+        "چه کاری می‌خوای انجام بدی؟",
+        reply_markup=main_menu(callback.from_user.id)
     )
 
     await callback.answer()
 
-
-# =========================
-# صفحه سلامت برای Render
-# =========================
 
 async def health(request):
     return web.Response(
@@ -381,18 +404,10 @@ async def start_web_server():
 
     app = web.Application()
 
-    app.router.add_get(
-        "/",
-        health
-    )
-
-    app.router.add_get(
-        "/health",
-        health
-    )
+    app.router.add_get("/", health)
+    app.router.add_get("/health", health)
 
     runner = web.AppRunner(app)
-
     await runner.setup()
 
     site = web.TCPSite(
@@ -403,14 +418,6 @@ async def start_web_server():
 
     await site.start()
 
-    logging.info(
-        f"Health server started on port {PORT}"
-    )
-
-
-# =========================
-# اجرای ربات
-# =========================
 
 async def main():
 
@@ -425,7 +432,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        logging.info("CACTUC STUDIO stopped.")
+    asyncio.run(main())
